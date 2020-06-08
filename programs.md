@@ -1,30 +1,77 @@
-const readline = require("readline");
-const createMemory = require("./create-memory");
-const CPU = require("./cpu");
-const instructions = require("./instructions");
+# Programs written for testing the vm
 
-const IP = 0;
-const ACC = 1;
-const R1 = 2;
-const R2 = 3;
-const R3 = 4;
-const R4 = 5;
-const R5 = 6;
-const R6 = 7;
-const R7 = 8;
-const R8 = 9;
-const SP = 10;
-const FP = 11;
+## Count to three
+```
+//start:
+let i = 0x0000;  // program start
 
-const memory = createMemory(256 * 256);
-const writableBytes = new Uint8Array(memory.buffer);
+// mov #0x0100, r1
+writableBytes[i++] = instructions.MOV_MEM_REG;
+writableBytes[i++] = 0x01;
+writableBytes[i++] = 0x00;
+writableBytes[i++] = R1;
 
-const cpu = new CPU(memory);
+// mov 0x0001, r2
+writableBytes[i++] = instructions.MOV_LIT_REG;
+writableBytes[i++] = 0x00;
+writableBytes[i++] = 0x01;
+writableBytes[i++] = R2;
 
-/////////////////////
-/// Start program ///
-/////////////////////
+// add r1, r2
+writableBytes[i++] = instructions.ADD_REG_REG;
+writableBytes[i++] = R1;
+writableBytes[i++] = R2;
 
+// mov acc, #0x0100
+writableBytes[i++] = instructions.MOV_REG_MEM;
+writableBytes[i++] = ACC;
+writableBytes[i++] = 0x01;
+writableBytes[i++] = 0x00; // 0x0100
+
+//jne 0x0003, start:
+writableBytes[i++] = instructions.JMP_NOT_EQ;
+writableBytes[i++] = 0x00;
+writableBytes[i++] = 0x03;
+writableBytes[i++] = 0x00;
+writableBytes[i++] = 0x00;
+```
+
+## Swap registers using stack
+```
+let i = 0x0000;  // program start
+
+// mov $5151, r1
+writableBytes[i++] = instructions.MOV_LIT_REG;
+writableBytes[i++] = 0x51;
+writableBytes[i++] = 0x51;
+writableBytes[i++] = R1;
+
+// mov $4242, r2
+writableBytes[i++] = instructions.MOV_LIT_REG;
+writableBytes[i++] = 0x42;
+writableBytes[i++] = 0x42;
+writableBytes[i++] = R2;
+
+// psh r1
+writableBytes[i++] = instructions.PSH_REG;
+writableBytes[i++] = R1;
+
+// psh r2
+writableBytes[i++] = instructions.PSH_REG;
+writableBytes[i++] = R2;
+
+// pop r1
+writableBytes[i++] = instructions.POP;
+writableBytes[i++] = R1;
+
+// pop r2
+writableBytes[i++] = instructions.POP;
+writableBytes[i++] = R2;
+```
+
+
+## Test subroutine implementation
+```
 const subroutineAddress = 0x3000;
 let i = 0x0000;  // program start
 
@@ -70,9 +117,9 @@ writableBytes[i++] = instructions.PSH_LIT;
 writableBytes[i++] = 0x44;
 writableBytes[i++] = 0x44;
 
-// ;; at address 0x0300
-i = subroutineAddress;
+// ;; at address 0x3000
 // my_subroutine: 
+i = subroutineAddress;
 // psh 0x0102
 writableBytes[i++] = instructions.PSH_LIT;
 writableBytes[i++] = 0x01;
@@ -103,28 +150,4 @@ writableBytes[i++] = R8;
 // ret
 writableBytes[i++] = instructions.RET;
 
-
-///////////////////
-/// End program ///
-///////////////////
-
-cpu.debug();
-// view the next n = 8 bytes at the ip
-cpu.viewMemoryAt(cpu.getRegister("ip"));
-// view the next n bytes at the stack (256 * 256 = 0xFFFF) and it grows "upwards so to see the last bytes we have to go even more back"
-cpu.viewMemoryAt(0xFFFF - 1 - 42, 44);
-
-cpu.viewMemoryAt(0x3000);
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
-
-
-rl.on("line", () => {
-    cpu.step();
-    cpu.debug();
-    cpu.viewMemoryAt(cpu.getRegister("ip"));
-    cpu.viewMemoryAt(0xFFFF - 1 - 42, 44);
-})
+```
